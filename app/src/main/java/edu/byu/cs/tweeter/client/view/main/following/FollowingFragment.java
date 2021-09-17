@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import edu.byu.cs.client.R;
+import edu.byu.cs.tweeter.client.Presenter.FollowingPresenter;
 import edu.byu.cs.tweeter.client.backgroundTask.GetFollowingTask;
 import edu.byu.cs.tweeter.client.backgroundTask.GetUserTask;
 import edu.byu.cs.tweeter.client.cache.Cache;
@@ -35,7 +36,7 @@ import edu.byu.cs.tweeter.model.domain.User;
 /**
  * Implements the "Following" tab.
  */
-public class FollowingFragment extends Fragment {
+public class FollowingFragment extends Fragment implements FollowingPresenter.View{
 
     private static final String LOG_TAG = "FollowingFragment";
     private static final String USER_KEY = "UserKey";
@@ -84,6 +85,21 @@ public class FollowingFragment extends Fragment {
         followingRecyclerView.addOnScrollListener(new FollowRecyclerViewPaginationScrollListener(layoutManager));
 
         return view;
+    }
+
+    @Override
+    public void setLoading(boolean value) {
+
+    }
+
+    @Override
+    public void addItems(List<User> newUsers) {
+
+    }
+
+    @Override
+    public void displayErrorMessage(String message) {
+
     }
 
     /**
