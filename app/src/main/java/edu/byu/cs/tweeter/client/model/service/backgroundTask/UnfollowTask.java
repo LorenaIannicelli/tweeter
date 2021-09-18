@@ -1,4 +1,4 @@
-package edu.byu.cs.tweeter.client.backgroundTask;
+package edu.byu.cs.tweeter.client.model.service.backgroundTask;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -7,44 +7,42 @@ import android.util.Log;
 
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
-import edu.byu.cs.tweeter.util.FakeData;
 
 /**
- * Background task that returns the profile for a specified user.
+ * Background task that removes a following relationship between two users.
  */
-public class GetUserTask implements Runnable {
-    private static final String LOG_TAG = "GetUserTask";
+public class UnfollowTask implements Runnable {
+    private static final String LOG_TAG = "UnfollowTask";
 
     public static final String SUCCESS_KEY = "success";
-    public static final String USER_KEY = "user";
     public static final String MESSAGE_KEY = "message";
     public static final String EXCEPTION_KEY = "exception";
 
     /**
      * Auth token for logged-in user.
+     * This user is the "follower" in the relationship.
      */
     private AuthToken authToken;
     /**
-     * Alias (or handle) for user whose profile is being retrieved.
+     * The user that is being followed.
      */
-    private String alias;
+    private User followee;
     /**
      * Message handler that will receive task results.
      */
     private Handler messageHandler;
 
-    public GetUserTask(AuthToken authToken, String alias, Handler messageHandler) {
+    public UnfollowTask(AuthToken authToken, User followee, Handler messageHandler) {
         this.authToken = authToken;
-        this.alias = alias;
+        this.followee = followee;
         this.messageHandler = messageHandler;
     }
 
     @Override
     public void run() {
         try {
-            User user = getUser();
 
-            sendSuccessMessage(user);
+            sendSuccessMessage();
 
         } catch (Exception ex) {
             Log.e(LOG_TAG, ex.getMessage(), ex);
@@ -52,19 +50,9 @@ public class GetUserTask implements Runnable {
         }
     }
 
-    private FakeData getFakeData() {
-        return new FakeData();
-    }
-
-    private User getUser() {
-        User user = getFakeData().findUserByAlias(alias);
-        return user;
-    }
-
-    private void sendSuccessMessage(User user) {
+    private void sendSuccessMessage() {
         Bundle msgBundle = new Bundle();
         msgBundle.putBoolean(SUCCESS_KEY, true);
-        msgBundle.putSerializable(USER_KEY, user);
 
         Message msg = Message.obtain();
         msg.setData(msgBundle);

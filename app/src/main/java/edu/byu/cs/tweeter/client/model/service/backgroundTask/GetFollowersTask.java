@@ -1,4 +1,4 @@
-package edu.byu.cs.tweeter.client.backgroundTask;
+package edu.byu.cs.tweeter.client.model.service.backgroundTask;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,19 +9,18 @@ import java.io.Serializable;
 import java.util.List;
 
 import edu.byu.cs.tweeter.model.domain.AuthToken;
-import edu.byu.cs.tweeter.model.domain.Status;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.util.FakeData;
 import edu.byu.cs.tweeter.util.Pair;
 
 /**
- * Background task that retrieves a page of statuses from a user's story.
+ * Background task that retrieves a page of followers.
  */
-public class GetStoryTask implements Runnable {
-    private static final String LOG_TAG = "GetStoryTask";
+public class GetFollowersTask implements Runnable {
+    private static final String LOG_TAG = "GetFollowersTask";
 
     public static final String SUCCESS_KEY = "success";
-    public static final String STATUSES_KEY = "statuses";
+    public static final String FOLLOWERS_KEY = "followers";
     public static final String MORE_PAGES_KEY = "more-pages";
     public static final String MESSAGE_KEY = "message";
     public static final String EXCEPTION_KEY = "exception";
@@ -31,46 +30,46 @@ public class GetStoryTask implements Runnable {
      */
     private AuthToken authToken;
     /**
-     * The user whose story is being retrieved.
+     * The user whose followers are being retrieved.
      * (This can be any user, not just the currently logged-in user.)
      */
     private User targetUser;
     /**
-     * Maximum number of statuses to return (i.e., page size).
+     * Maximum number of followers to return (i.e., page size).
      */
     private int limit;
     /**
-     * The last status returned in the previous page of results (can be null).
+     * The last follower returned in the previous page of results (can be null).
      * This allows the new page to begin where the previous page ended.
      */
-    private Status lastStatus;
+    private User lastFollower;
     /**
      * Message handler that will receive task results.
      */
     private Handler messageHandler;
 
-    public GetStoryTask(AuthToken authToken, User targetUser, int limit, Status lastStatus,
-                        Handler messageHandler) {
+    public GetFollowersTask(AuthToken authToken, User targetUser, int limit, User lastFollower,
+                            Handler messageHandler) {
         this.authToken = authToken;
         this.targetUser = targetUser;
         this.limit = limit;
-        this.lastStatus = lastStatus;
+        this.lastFollower = lastFollower;
         this.messageHandler = messageHandler;
     }
 
     @Override
     public void run() {
         try {
-            Pair<List<Status>, Boolean> pageOfStatus = getStory();
+            Pair<List<User>, Boolean> pageOfUsers = getFollowers();
 
-            List<Status> statuses = pageOfStatus.getFirst();
-            boolean hasMorePages = pageOfStatus.getSecond();
+            List<User> followers = pageOfUsers.getFirst();
+            boolean hasMorePages = pageOfUsers.getSecond();
 
-            for (Status s : statuses) {
-                BackgroundTaskUtils.loadImage(s.getUser());
+            for (User u : followers) {
+                BackgroundTaskUtils.loadImage(u);
             }
 
-            sendSuccessMessage(statuses, hasMorePages);
+            sendSuccessMessage(followers, hasMorePages);
 
         } catch (Exception ex) {
             Log.e(LOG_TAG, ex.getMessage(), ex);
@@ -82,15 +81,15 @@ public class GetStoryTask implements Runnable {
         return new FakeData();
     }
 
-    private Pair<List<Status>, Boolean> getStory() {
-        Pair<List<Status>, Boolean> pageOfStatus = getFakeData().getPageOfStatus(lastStatus, limit);
-        return pageOfStatus;
+    private Pair<List<User>, Boolean> getFollowers() {
+        Pair<List<User>, Boolean> pageOfUsers = getFakeData().getPageOfUsers(lastFollower, limit, targetUser);
+        return pageOfUsers;
     }
 
-    private void sendSuccessMessage(List<Status> statuses, boolean hasMorePages) {
+    private void sendSuccessMessage(List<User> followers, boolean hasMorePages) {
         Bundle msgBundle = new Bundle();
         msgBundle.putBoolean(SUCCESS_KEY, true);
-        msgBundle.putSerializable(STATUSES_KEY, (Serializable) statuses);
+        msgBundle.putSerializable(FOLLOWERS_KEY, (Serializable) followers);
         msgBundle.putBoolean(MORE_PAGES_KEY, hasMorePages);
 
         Message msg = Message.obtain();
@@ -120,4 +119,5 @@ public class GetStoryTask implements Runnable {
 
         messageHandler.sendMessage(msg);
     }
+
 }
