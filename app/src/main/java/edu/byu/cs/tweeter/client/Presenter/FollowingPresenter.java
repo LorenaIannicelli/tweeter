@@ -80,7 +80,7 @@ public class FollowingPresenter implements FollowService.Observer{
      * Causes the Adapter to display a loading footer and make a request to get more following
      * data.
      */
-    public void loadMoreItems() {
+    public void loadMoreFollowees() {
         if (!isLoading & hasMorePages) {   // This guard is important for avoiding a race condition in the scrolling code.
             isLoading = true;
             setLoading(true);
@@ -129,8 +129,6 @@ public class FollowingPresenter implements FollowService.Observer{
 
         });
     }
-
-
 
 
 
