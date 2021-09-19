@@ -49,6 +49,7 @@ public class FollowService {
 
 
 
+
     public static class MessageHandler extends Handler {
 
         private final Observer observer;
@@ -76,7 +77,7 @@ public class FollowService {
         }
     }
 
-    public class GetFollowingTask implements Runnable {
+    public class GetFollowingTask extends BackgroundTask {
         private static final String LOG_TAG = "GetFollowingTask";
 
         public static final String SUCCESS_KEY = "success";
@@ -103,22 +104,29 @@ public class FollowService {
          * This allows the new page to begin where the previous page ended.
          */
         private User lastFollowee;
-        /**
-         * Message handler that will receive task results.
-         */
-        private Handler messageHandler;
 
         public GetFollowingTask(AuthToken authToken, User targetUser, int limit, User lastFollowee,
                                 Handler messageHandler) {
+            super(messageHandler);
             this.authToken = authToken;
             this.targetUser = targetUser;
             this.limit = limit;
             this.lastFollowee = lastFollowee;
-            this.messageHandler = messageHandler;
+        }
+
+        protected void sendSuccessMessage(List<User> followees, boolean hasMorePages)
+        {
+            sendSuccessMessage(new BundleLoader() {
+                @Override
+                public void load(Bundle msgBundle) {
+                    msgBundle.putSerializable(FOLLOWEES_KEY, (Serializable) followees);
+                    msgBundle.putBoolean(MORE_PAGES_KEY, hasMorePages);
+                }
+            });
         }
 
         @Override
-        public void run() {
+        protected void runTask() {
             try {
                 Pair<List<User>, Boolean> pageOfUsers = getFollowees();
 
@@ -149,40 +157,9 @@ public class FollowService {
             }
         }
 
-        private void sendSuccessMessage(List<User> followees, boolean hasMorePages) {
-            Bundle msgBundle = new Bundle();
-            msgBundle.putBoolean(SUCCESS_KEY, true);
-            msgBundle.putSerializable(FOLLOWEES_KEY, (Serializable) followees);
-            msgBundle.putBoolean(MORE_PAGES_KEY, hasMorePages);
-
-            Message msg = Message.obtain();
-            msg.setData(msgBundle);
-
-            messageHandler.sendMessage(msg);
-        }
-
-        private void sendFailedMessage(String message) {
-            Bundle msgBundle = new Bundle();
-            msgBundle.putBoolean(SUCCESS_KEY, false);
-            msgBundle.putString(MESSAGE_KEY, message);
-
-            Message msg = Message.obtain();
-            msg.setData(msgBundle);
-
-            messageHandler.sendMessage(msg);
-        }
-
-        private void sendExceptionMessage(Exception exception) {
-            Bundle msgBundle = new Bundle();
-            msgBundle.putBoolean(SUCCESS_KEY, false);
-            msgBundle.putSerializable(EXCEPTION_KEY, exception);
-
-            Message msg = Message.obtain();
-            msg.setData(msgBundle);
-
-            messageHandler.sendMessage(msg);
-        }
 
     }
 
-}
+
+
+    }
