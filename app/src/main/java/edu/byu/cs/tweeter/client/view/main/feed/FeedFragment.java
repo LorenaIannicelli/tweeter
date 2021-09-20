@@ -46,14 +46,14 @@ import edu.byu.cs.tweeter.model.domain.User;
  * Implements the "Feed" tab.
  */
 public class FeedFragment extends Fragment implements FeedPresenter.View {
-    private static final String LOG_TAG = "FeedFragment";
+
     private static final String USER_KEY = "UserKey";
     private static final int LOADING_DATA_VIEW = 0;
     private static final int ITEM_VIEW = 1;
+
     private FeedRecyclerViewAdapter feedRecyclerViewAdapter;
 
     private FeedPresenter presenter;
-
 
 
     /**
@@ -90,29 +90,47 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext());
         feedRecyclerView.setLayoutManager(layoutManager);
 
-        try {
-            feedRecyclerViewAdapter = new FeedRecyclerViewAdapter();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
+        feedRecyclerViewAdapter = new FeedRecyclerViewAdapter();
         feedRecyclerView.setAdapter(feedRecyclerViewAdapter);
 
         feedRecyclerView.addOnScrollListener(new FeedRecyclerViewPaginationScrollListener(layoutManager));
 
-        presenter.loadMoreItems();
-        //might want to call a method on the presenter here!!!!
+        try {
+            presenter.loadMoreItems();
+          } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
 
         return view;
     }
 
     @Override
-    public void displayErrorMessage(String message) {
+    public void setLoading(boolean value) {
+        feedRecyclerViewAdapter.setLoading(value);
+    }
 
+    @Override
+    public void navigateToUser(User user)
+    {
+        Intent intent = new Intent(getContext(), MainActivity.class);
+        intent.putExtra(MainActivity.CURRENT_USER_KEY, user);
+        startActivity(intent);
+    }
+
+    @Override
+    public void addItems(List<Status> newStatuses)
+    {
+        feedRecyclerViewAdapter.addItems(newStatuses);
+    }
+
+    @Override
+    public void displayErrorMessage(String message) {
+        Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
     }
 
     @Override
     public void displayInfoMessage(String message) {
-
+        Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
     }
 
     /**
@@ -144,7 +162,7 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
                 itemView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        Toast.makeText(getContext(), "You selected '" + userName.getText() + "'.", Toast.LENGTH_SHORT).show();
+                        presenter.gotoUser(userAlias.getText().toString());
                     }
                 });
             }
@@ -190,11 +208,7 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
                             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(clickable));
                             startActivity(intent);
                         } else {
-                            GetUserTask getUserTask = new GetUserTask(Cache.getInstance().getCurrUserAuthToken(),
-                                    clickable, new GetUserHandler());
-                            ExecutorService executor = Executors.newSingleThreadExecutor();
-                            executor.execute(getUserTask);
-                            Toast.makeText(getContext(), "Getting user's profile...", Toast.LENGTH_LONG).show();
+                            presenter.gotoUser(userAlias.getText().toString());
                         }
                     }
 
@@ -403,12 +417,17 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
                     totalItemCount && firstVisibleItemPosition >= 0) {
                 // Run this code later on the UI thread
                 final Handler handler = new Handler(Looper.getMainLooper());
-                handler.postDelayed(() -> {
-                    try {
-                        feedRecyclerViewAdapter.loadMoreItems();
-                    } catch (MalformedURLException e) {
-                        e.printStackTrace();
-                    } }, 0);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            presenter.loadMoreItems();
+                        }catch(MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }, 0);
+
                 }
         }
     }
