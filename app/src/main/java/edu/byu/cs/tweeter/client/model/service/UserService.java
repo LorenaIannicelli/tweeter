@@ -6,10 +6,12 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import java.io.Serializable;
 
+import edu.byu.cs.tweeter.client.cache.Cache;
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.BackgroundTaskUtils;
-import edu.byu.cs.tweeter.client.model.service.backgroundTask.LoginTask;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.util.FakeData;
@@ -17,6 +19,11 @@ import edu.byu.cs.tweeter.util.Pair;
 
 public class UserService {
 
+    public interface LoginObserver {
+        void loginSucceeded(User user, AuthToken authToken);
+        void loginFailed(String message);
+        void loginThrewException(Exception ex);
+    }
 
     public interface GetUserObserver {
         void getUserHandleSuccess(User user, AuthToken authToken);
@@ -31,13 +38,25 @@ public class UserService {
     }
 
 
+    /*Create login request */
+    public void login(String alias, String password, LoginObserver observer)
+    {
+        UserService.LoginTask loginTask = getGetLoginTask(alias, password, observer);
+        BackgroundTaskUtils.runTask(loginTask);
+    }
+
+    public UserService.LoginTask getGetLoginTask(String alias, String password, LoginObserver observer)
+    {
+        return new UserService.LoginTask(alias, password, new LoginHandler(Looper.getMainLooper(), observer));
+    }
+
+
+
     public void getUser (AuthToken authToken, String alias, GetUserObserver observer)
     {
         UserService.GetUserTask userTask = getGetUserTask(authToken, alias, observer);
         BackgroundTaskUtils.runTask(userTask);
     }
-
-
 
     public UserService.GetUserTask getGetUserTask(AuthToken authToken, String alias, GetUserObserver observer)
     {
@@ -165,8 +184,6 @@ public class UserService {
                 }
             });
         }
-
-
     }
 
     public class LogoutTask extends BackgroundTask {
@@ -317,6 +334,37 @@ public class UserService {
             } else if (bundle.containsKey(LoginTask.EXCEPTION_KEY)) {
                 Exception ex = (Exception) bundle.getSerializable(LoginTask.EXCEPTION_KEY);
                 observer.getUserHandleException(ex);
+            }
+        }
+    }
+
+    /**
+     * Message handler (i.e., observer) for LoginTask
+     */
+    private class LoginHandler extends Handler {
+        private final LoginObserver observer;
+
+        public LoginHandler(Looper looper, LoginObserver observer){
+            super(looper);
+            this.observer = observer;
+        }
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            Bundle bundle = msg.getData();
+            boolean success = bundle.getBoolean(LoginTask.SUCCESS_KEY);
+            if (success) {
+                User loggedInUser = (User) bundle.getSerializable(LoginTask.USER_KEY);
+                AuthToken authToken = (AuthToken) bundle.getSerializable(LoginTask.AUTH_TOKEN_KEY);
+                //cache the information
+                Cache.getInstance().setCurrUser(loggedInUser);
+                Cache.getInstance().setCurrUserAuthToken(authToken);
+                observer.loginSucceeded(loggedInUser, authToken);
+            } else if (bundle.containsKey(LoginTask.MESSAGE_KEY)) {
+                String message = msg.getData().getString(LoginTask.MESSAGE_KEY);
+                observer.loginFailed(message);
+            } else if (bundle.containsKey(LoginTask.EXCEPTION_KEY)) {
+                Exception ex = (Exception) msg.getData().getSerializable(LoginTask.EXCEPTION_KEY);
+                observer.loginThrewException(ex);
             }
         }
     }
