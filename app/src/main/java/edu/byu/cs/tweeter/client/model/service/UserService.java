@@ -1,10 +1,12 @@
 package edu.byu.cs.tweeter.client.model.service;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -12,6 +14,7 @@ import java.io.Serializable;
 
 import edu.byu.cs.tweeter.client.cache.Cache;
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.BackgroundTaskUtils;
+import edu.byu.cs.tweeter.client.view.main.MainActivity;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.util.FakeData;
@@ -31,23 +34,39 @@ public class UserService {
         void getUserHandleException(Exception exception);
     }
 
+    public interface RegisterObserver {
+        void registerSucceeded(User user, AuthToken authToken);
+        void registerFailed(String message);
+        void registerThrewException(Exception ex);
+    }
+
     //create an instance
     public UserService()
-    {
-
-    }
+    { }
 
 
     /*Create login request */
     public void login(String alias, String password, LoginObserver observer)
     {
-        UserService.LoginTask loginTask = getGetLoginTask(alias, password, observer);
+        UserService.LoginTask loginTask = getLoginTask(alias, password, observer);
         BackgroundTaskUtils.runTask(loginTask);
     }
 
-    public UserService.LoginTask getGetLoginTask(String alias, String password, LoginObserver observer)
+    public UserService.LoginTask getLoginTask(String alias, String password, LoginObserver observer)
     {
         return new UserService.LoginTask(alias, password, new LoginHandler(Looper.getMainLooper(), observer));
+    }
+
+    /*Create login request */
+    public void register(String firstName, String lastName, String alias, String password, String image, RegisterObserver observer)
+    {
+        UserService.RegisterTask registerTask = getRegisterTask(firstName, lastName, alias, password, image, observer);
+        BackgroundTaskUtils.runTask(registerTask);
+    }
+
+    public UserService.RegisterTask getRegisterTask(String firstName, String lastName, String alias, String password, String image, RegisterObserver observer)
+    {
+        return new UserService.RegisterTask(firstName, lastName, alias, password, image, new RegisterHandler(Looper.getMainLooper(), observer));
     }
 
 
@@ -365,6 +384,33 @@ public class UserService {
             } else if (bundle.containsKey(LoginTask.EXCEPTION_KEY)) {
                 Exception ex = (Exception) msg.getData().getSerializable(LoginTask.EXCEPTION_KEY);
                 observer.loginThrewException(ex);
+            }
+        }
+    }
+
+    private class RegisterHandler extends Handler {
+        private final RegisterObserver observer;
+
+        public RegisterHandler(Looper looper, RegisterObserver observer) {
+            super(looper);
+            this.observer = observer;
+        }
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            Bundle bundle = msg.getData();
+            boolean success = bundle.getBoolean(RegisterTask.SUCCESS_KEY);
+            if (success) {
+                User registeredUser = (User) bundle.getSerializable(RegisterTask.USER_KEY);
+                AuthToken authToken = (AuthToken) bundle.getSerializable(RegisterTask.AUTH_TOKEN_KEY);
+                Cache.getInstance().setCurrUser(registeredUser);
+                Cache.getInstance().setCurrUserAuthToken(authToken);
+                observer.registerSucceeded(registeredUser, authToken);
+            } else if (msg.getData().containsKey(edu.byu.cs.tweeter.client.model.service.backgroundTask.RegisterTask.MESSAGE_KEY)) {
+                String message = msg.getData().getString(edu.byu.cs.tweeter.client.model.service.backgroundTask.RegisterTask.MESSAGE_KEY);
+                observer.registerFailed(message);
+            } else if (msg.getData().containsKey(edu.byu.cs.tweeter.client.model.service.backgroundTask.RegisterTask.EXCEPTION_KEY)) {
+                Exception ex = (Exception) msg.getData().getSerializable(edu.byu.cs.tweeter.client.model.service.backgroundTask.RegisterTask.EXCEPTION_KEY);
+                observer.registerThrewException(ex);
             }
         }
     }
