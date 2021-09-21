@@ -7,15 +7,13 @@ import android.os.Message;
 import android.util.Log;
 
 import java.io.Serializable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.BackgroundTaskUtils;
-import edu.byu.cs.tweeter.client.model.service.backgroundTask.GetUserTask;
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.LoginTask;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.util.FakeData;
+import edu.byu.cs.tweeter.util.Pair;
 
 public class UserService {
 
@@ -43,11 +41,9 @@ public class UserService {
 
     public UserService.GetUserTask getGetUserTask(AuthToken authToken, String alias, GetUserObserver observer)
     {
-        return new UserService.GetUserTask(authToken, alias, new UserService.MessageHandler(Looper.getMainLooper(), observer));
+        return new UserService.GetUserTask(authToken, alias, new GetUserHandler(Looper.getMainLooper(), observer));
     }
-
-
-
+    
     public class GetUserTask extends BackgroundTask {
         private static final String LOG_TAG = "GetUserTask";
 
@@ -106,12 +102,202 @@ public class UserService {
 
     }
 
+    public class LoginTask extends BackgroundTask {
 
-    private static class MessageHandler extends Handler {
+        private static final String LOG_TAG = "LoginTask";
+
+        public static final String SUCCESS_KEY = "success";
+        public static final String USER_KEY = "user";
+        public static final String AUTH_TOKEN_KEY = "auth-token";
+        public static final String MESSAGE_KEY = "message";
+        public static final String EXCEPTION_KEY = "exception";
+
+        /**
+         * The user's username (or "alias" or "handle"). E.g., "@susan".
+         */
+        private String username;
+        /**
+         * The user's password.
+         */
+        private String password;
+
+
+        public LoginTask(String username, String password, Handler messageHandler) {
+            super(messageHandler);
+            this.username = username;
+            this.password = password;
+        }
+
+        @Override
+        public void runTask() {
+            try {
+                Pair<User, AuthToken> loginResult = doLogin();
+
+                User loggedInUser = loginResult.getFirst();
+                AuthToken authToken = loginResult.getSecond();
+
+                BackgroundTaskUtils.loadImage(loggedInUser);
+
+                sendSuccessMessage(loggedInUser, authToken);
+
+            } catch (Exception ex) {
+                Log.e(LOG_TAG, ex.getMessage(), ex);
+                sendExceptionMessage(ex);
+            }
+        }
+
+        private FakeData getFakeData() {
+            return new FakeData();
+        }
+
+        private Pair<User, AuthToken> doLogin() {
+            User loggedInUser = getFakeData().getFirstUser();
+            AuthToken authToken = getFakeData().getAuthToken();
+            return new Pair<>(loggedInUser, authToken);
+        }
+
+        private void sendSuccessMessage(User loggedInUser, AuthToken authToken) {
+            sendSuccessMessage(new BundleLoader() {
+                @Override
+                public void load(Bundle msgBundle) {
+                    msgBundle.putSerializable(USER_KEY, loggedInUser);
+                    msgBundle.putSerializable(AUTH_TOKEN_KEY, authToken);
+                }
+            });
+        }
+
+
+    }
+
+    public class LogoutTask extends BackgroundTask {
+        private static final String LOG_TAG = "LogoutTask";
+
+        public static final String SUCCESS_KEY = "success";
+        public static final String MESSAGE_KEY = "message";
+        public static final String EXCEPTION_KEY = "exception";
+
+        /**
+         * Auth token for logged-in user.
+         */
+        private AuthToken authToken;
+
+
+        public LogoutTask(AuthToken authToken, Handler messageHandler) {
+            super(messageHandler);
+            this.authToken = authToken;
+        }
+
+        @Override
+        public void runTask() {
+            try {
+
+                sendSuccessMessage();
+
+            } catch (Exception ex) {
+                Log.e(LOG_TAG, ex.getMessage(), ex);
+                sendExceptionMessage(ex);
+            }
+        }
+
+//        //do we even need this?
+//        protected void sendSuccessMessage() {
+//            sendSuccessMessage(new BundleLoader() {
+//                @Override
+//                public void load(Bundle msgBundle) {
+//                    msgBundle.putBoolean(SUCCESS_KEY, true);
+//                }
+//            });
+//        }
+    }
+
+    /**
+     * Background task that creates a new user account and logs in the new user (i.e., starts a session).
+     */
+    public class RegisterTask extends BackgroundTask {
+        private static final String LOG_TAG = "RegisterTask";
+
+        public static final String SUCCESS_KEY = "success";
+        public static final String USER_KEY = "user";
+        public static final String AUTH_TOKEN_KEY = "auth-token";
+        public static final String MESSAGE_KEY = "message";
+        public static final String EXCEPTION_KEY = "exception";
+
+        /**
+         * The user's first name.
+         */
+        private String firstName;
+        /**
+         * The user's last name.
+         */
+        private String lastName;
+        /**
+         * The user's username (or "alias" or "handle"). E.g., "@susan".
+         */
+        private String username;
+        /**
+         * The user's password.
+         */
+        private String password;
+        /**
+         * The base-64 encoded bytes of the user's profile image.
+         */
+        private String image;
+
+
+        public RegisterTask(String firstName, String lastName, String username, String password,
+                            String image, Handler messageHandler) {
+            super(messageHandler);
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.username = username;
+            this.password = password;
+            this.image = image;
+        }
+
+        @Override
+        public void runTask() {
+            try {
+                Pair<User, AuthToken> registerResult = doRegister();
+
+                User registeredUser = registerResult.getFirst();
+                AuthToken authToken = registerResult.getSecond();
+
+                BackgroundTaskUtils.loadImage(registeredUser);
+
+                sendSuccessMessage(registeredUser, authToken);
+
+            } catch (Exception ex) {
+                Log.e(LOG_TAG, ex.getMessage(), ex);
+                sendExceptionMessage(ex);
+            }
+        }
+
+        private FakeData getFakeData() {
+            return new FakeData();
+        }
+
+        private Pair<User, AuthToken> doRegister() {
+            User registeredUser = getFakeData().getFirstUser();
+            AuthToken authToken = getFakeData().getAuthToken();
+            return new Pair<>(registeredUser, authToken);
+        }
+
+        private void sendSuccessMessage(User registeredUser, AuthToken authToken) {
+            sendSuccessMessage(new BundleLoader() {
+                @Override
+                public void load(Bundle msgBundle) {
+                    msgBundle.putSerializable(USER_KEY, registeredUser);
+                    msgBundle.putSerializable(AUTH_TOKEN_KEY, authToken);
+                }
+            });
+        }
+    }
+
+    private static class GetUserHandler extends Handler {
 
         private final GetUserObserver observer;
 
-        MessageHandler(Looper looper, GetUserObserver observer)
+        GetUserHandler(Looper looper, GetUserObserver observer)
         {
             super(looper);
             this.observer = observer;

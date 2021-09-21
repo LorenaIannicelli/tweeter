@@ -28,13 +28,9 @@ import org.jetbrains.annotations.NotNull;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import edu.byu.cs.client.R;
 import edu.byu.cs.tweeter.client.Presenter.FeedPresenter;
-import edu.byu.cs.tweeter.client.model.service.backgroundTask.GetFeedTask;
-import edu.byu.cs.tweeter.client.model.service.backgroundTask.GetUserTask;
 import edu.byu.cs.tweeter.client.cache.Cache;
 import edu.byu.cs.tweeter.client.view.main.MainActivity;
 import edu.byu.cs.tweeter.client.view.util.ImageUtils;
@@ -173,9 +169,6 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
                 post = null;
                 datetime = null;
             }
-
-
-
         }
 
         /**
@@ -208,7 +201,7 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
                             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(clickable));
                             startActivity(intent);
                         } else {
-                            presenter.gotoUser(userAlias.getText().toString());
+                            presenter.gotoUser(clickable);
                         }
                     }
 
@@ -375,8 +368,6 @@ public class FeedFragment extends Fragment implements FeedPresenter.View {
         private void removeLoadingFooter() {
             removeItem(feed.get(feed.size() - 1));
         }
-
-
     }
 
     /**
