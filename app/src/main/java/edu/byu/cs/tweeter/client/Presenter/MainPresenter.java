@@ -1,7 +1,5 @@
 package edu.byu.cs.tweeter.client.Presenter;
 
-import android.widget.Toast;
-
 import java.net.MalformedURLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,16 +7,14 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import edu.byu.cs.tweeter.client.cache.Cache;
+import edu.byu.cs.tweeter.client.model.service.FollowService;
 import edu.byu.cs.tweeter.client.model.service.StatusService;
 import edu.byu.cs.tweeter.client.model.service.UserService;
-import edu.byu.cs.tweeter.client.model.service.backgroundTask.PostStatusTask;
-import edu.byu.cs.tweeter.client.view.main.MainActivity;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.Status;
+import edu.byu.cs.tweeter.model.domain.User;
 
 public class MainPresenter {
 
@@ -30,14 +26,25 @@ public class MainPresenter {
 
         void displayInfoMessage(String message);
         void displayErrorMessage(String message);
+
+        void updateFollowerCount(int count);
+        void updateFollowingCount(int count);
+
+        void renderFollowButton();
+        void renderFollowingButton();
+
+        void enableFollowButton(boolean enabled);
+        void updateFollowersAndFollowing();
     }
 
     private final View view;
-    private AuthToken authToken;
+    private AuthToken authToken;        //NEED TO IMPLEMENT
+    private User user;                  //NEED TO IMPLEMENT
 
-    public MainPresenter(View view)
+    public MainPresenter(View view, User user)
     {
         this.view = view;
+        this.user = user;
     }
 
     public void postStatus(String post)
@@ -90,6 +97,101 @@ public class MainPresenter {
             }
         });
     }
+
+    public void getFollowersCount()
+    {
+        new FollowService().getFollowersCount(authToken, user, new FollowService.GetFollowersCountObserver()
+        {
+            @Override
+            public void getFollowersCountSuccess(int count) {
+                view.updateFollowerCount(count);
+            }
+
+            @Override
+            public void getFollowersCountFailure(String message) {
+                view.displayErrorMessage("Failed to get followers count " + message);
+            }
+
+            @Override
+            public void getFollowersCountException(Exception ex) {
+                view.displayErrorMessage("Failed to get followers count because of exception: " + ex.getMessage());
+            }
+        });
+    }
+
+    public void getFollowingCount() {
+        new FollowService().getFollowingCount(authToken, user, new FollowService.GetFollowingCountObserver()
+        {
+            @Override
+            public void getFollowingCountSuccess(int count) {
+                view.updateFollowingCount(count);
+            }
+
+            @Override
+            public void getFollowingCountFailure(String message) {
+                view.displayErrorMessage("Failed to get following count " + message);
+            }
+
+            @Override
+            public void getFollowingCountException(Exception exception) {
+                view.displayErrorMessage("Failed to get following count because of exception: " + exception.getMessage());
+            }
+        });
+    }
+
+    public void isFollower(User followee){
+        new FollowService().isFollower(authToken, user, followee, new FollowService.IsFollowerObserver()
+        {
+            @Override
+            public void isFollowerSuccess(boolean isFollower) {
+                if (isFollower) {
+                    view.renderFollowingButton();
+                } else {
+                    view.renderFollowButton();
+                }
+            }
+
+            @Override
+            public void isFollowerFailure(String message) {
+                view.displayErrorMessage("Failed to determine following relationship: " + message);
+            }
+
+            @Override
+            public void isFollowerException(Exception exception) {
+                view.displayErrorMessage("Failed to determine following relationship because of exception: " + exception.getMessage());
+            }
+        });
+    }
+
+    public void follow(User followee)
+    {
+        view.displayInfoMessage("Adding " + followee.getName());
+        new FollowService().follow(authToken, followee, new FollowService.FollowObserver()
+        {
+            @Override
+            public void followSuccess() {
+                view.updateFollowersAndFollowing();
+
+                view.renderFollowingButton();
+            }
+
+            @Override
+            public void followFailure(String message) {
+                view.displayErrorMessage("Failed to follow: " + message);
+            }
+
+            @Override
+            public void followException(Exception exception) {
+                view.displayErrorMessage("Failed to follow because of exception: " + exception.getMessage());
+            }
+
+            @Override
+            public void followUpdateAll() {
+                view.enableFollowButton(true);
+            }
+        });
+    }
+
 
     private String getFormattedDateTime() throws ParseException {
         SimpleDateFormat userFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");

@@ -9,7 +9,7 @@ import edu.byu.cs.tweeter.client.model.service.UserService;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 
-public class FollowingPresenter implements FollowService.Observer{
+public class FollowingPresenter implements FollowService.GetFollowingObserver{
 
     private static final String LOG_TAG = "FollowingPresenter";
     private static final int PAGE_SIZE = 10;
@@ -85,12 +85,12 @@ public class FollowingPresenter implements FollowService.Observer{
 
     public void getFollowing(AuthToken authToken, User targetUser, int limit, User lastFollowee)
     {
-        getFollowingService(this).getFollowees(authToken, targetUser, limit, lastFollowee);
+        getFollowingService().getFollowing(authToken, targetUser, limit, lastFollowee, this);
     }
 
-    public FollowService getFollowingService(FollowService.Observer observer)
+    public FollowService getFollowingService()
     {
-        return new FollowService(observer);
+        return new FollowService();
     }
 
     public void gotoUser(String alias)
@@ -127,7 +127,7 @@ public class FollowingPresenter implements FollowService.Observer{
 
 
     @Override
-    public void handleSuccess(List<User> followees, boolean hasMorePages)
+    public void getFollowingSuccess(List<User> followees, boolean hasMorePages)
     {
         setLastFollowee((followees.size() > 0 ) ? followees.get(followees.size() - 1) : null);
         setHasMorePages(hasMorePages);
@@ -138,7 +138,7 @@ public class FollowingPresenter implements FollowService.Observer{
     }
 
     @Override
-    public void handleFailure(String message)
+    public void getFollowingFailure(String message)
     {
         String errorMessage = "Failed to retrieve followees: " + message;
         Log.e(LOG_TAG, errorMessage);
@@ -149,7 +149,7 @@ public class FollowingPresenter implements FollowService.Observer{
     }
 
     @Override
-    public void handleException(Exception exception)
+    public void getFollowingException(Exception exception)
     {
         String errorMessage = "Failed to retrieve followees because of exception: " + exception.getMessage();
         Log.e(LOG_TAG, errorMessage, exception);

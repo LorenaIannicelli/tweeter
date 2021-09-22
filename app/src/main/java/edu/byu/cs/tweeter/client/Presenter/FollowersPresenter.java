@@ -9,7 +9,7 @@ import edu.byu.cs.tweeter.client.model.service.UserService;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 
-public class FollowersPresenter implements FollowService.Observer{
+public class FollowersPresenter implements FollowService.GetFollowersObserver{
     private static final String LOG_TAG = "FollowersFragment";
     private static final int PAGE_SIZE = 10;
 
@@ -71,13 +71,9 @@ public class FollowersPresenter implements FollowService.Observer{
 
     public void getFollowers(AuthToken authToken, User user, int limit, User lastFollower)
     {
-        getFollowersService(this).getFollowers(authToken, user, limit, lastFollower);
+        new FollowService().getFollowers(authToken, user, limit, lastFollower, this);
     }
 
-    public FollowService getFollowersService(FollowService.Observer observer)
-    {
-        return new FollowService(observer);
-    }
 
     public void gotoUser(String alias)
     {
@@ -112,7 +108,7 @@ public class FollowersPresenter implements FollowService.Observer{
 
 
     @Override
-    public void handleSuccess(List<User> folowees, boolean hasMorePages) {
+    public void getFollowersSuccess(List<User> folowees, boolean hasMorePages) {
         setLastFollower((folowees.size() > 0 ) ? folowees.get(folowees.size() - 1) : null);
         setHasMorePages(hasMorePages);
         view.setLoading(false);
@@ -121,7 +117,7 @@ public class FollowersPresenter implements FollowService.Observer{
     }
 
     @Override
-    public void handleFailure(String message) {
+    public void getFollowersFailure(String message) {
         String errorMessage = "Failed to retrieve followers: " + message;
         Log.e(LOG_TAG, errorMessage);
 
@@ -131,7 +127,7 @@ public class FollowersPresenter implements FollowService.Observer{
     }
 
     @Override
-    public void handleException(Exception exception) {
+    public void getFollowersException(Exception exception) {
         String errorMessage = "Failed to retrieve followers because of exception: " + exception.getMessage();
         Log.e(LOG_TAG, errorMessage, exception);
 
