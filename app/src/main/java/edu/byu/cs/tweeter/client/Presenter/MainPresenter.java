@@ -1,5 +1,7 @@
 package edu.byu.cs.tweeter.client.Presenter;
 
+import android.widget.Toast;
+
 import java.net.MalformedURLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -12,18 +14,26 @@ import java.util.concurrent.Executors;
 
 import edu.byu.cs.tweeter.client.cache.Cache;
 import edu.byu.cs.tweeter.client.model.service.StatusService;
+import edu.byu.cs.tweeter.client.model.service.UserService;
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.PostStatusTask;
 import edu.byu.cs.tweeter.client.view.main.MainActivity;
+import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.Status;
 
 public class MainPresenter {
 
     public interface View {
-        void displayErrorMessage(String message);
+        void displayPostMessage();
+        void clearPostMessage();
+        void displayLogoutMessage();
+        void clearLogoutMessage();
+
         void displayInfoMessage(String message);
+        void displayErrorMessage(String message);
     }
 
-    private static final View view;
+    private final View view;
+    private AuthToken authToken;
 
     public MainPresenter(View view)
     {
@@ -34,13 +44,25 @@ public class MainPresenter {
     {
         try {
             Status newStatus = new Status(post, Cache.getInstance().getCurrUser(), getFormattedDateTime(), parseURLs(post), parseMentions(post));
-            StatusService statusService = getStatusService();
-            statusService.postStatus(authToken, Status, );
+            new StatusService().postStatus(authToken, newStatus, new StatusService.StatusObserver()
+            {
+                @Override
+                public void handleSuccess() {
+                    view.clearPostMessage();
+                    view.displayInfoMessage("Successfully Posted!");
+                }
 
-            PostStatusTask statusTask = new PostStatusTask(Cache.getInstance().getCurrUserAuthToken(),
-                    newStatus, new MainActivity.PostStatusHandler());
-            ExecutorService executor = Executors.newSingleThreadExecutor();
-            executor.execute(statusTask);
+                @Override
+                public void handleFailure(String message) {
+                    view.displayErrorMessage("Failed to post status: " + message);
+                }
+
+                @Override
+                public void handleException(Exception ex) {
+                    view.displayErrorMessage("Failed to post status: " + ex.getMessage());
+                }
+            });
+
         } catch(ParseException exception) {
 
         }catch(MalformedURLException exception) {
@@ -48,9 +70,25 @@ public class MainPresenter {
         }
     }
 
-    private StatusService getStatusService()
-    {
-        return new StatusService();
+    public void logout() {
+        view.displayLogoutMessage();
+        new UserService().logout(authToken, new UserService.LogoutObserver()
+        {
+            @Override
+            public void logoutSucceeded() {
+                view.clearLogoutMessage();
+            }
+
+            @Override
+            public void logoutFailed(String message) {
+                view.displayErrorMessage("Logout failed: " + message);
+            }
+
+            @Override
+            public void logoutThrewException(Exception ex) {
+                view.displayErrorMessage("Logout failed due to exception: " + ex.getMessage());
+            }
+        });
     }
 
     private String getFormattedDateTime() throws ParseException {

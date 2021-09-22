@@ -43,7 +43,7 @@ public class StoryService {
 
     public GetStoryTask getGetStoryTask(AuthToken authToken, User user, int limit, Status lastStatus)
     {
-        return new GetStoryTask(authToken, user, limit, lastStatus, new GetStoryHandler(this, Looper.getMainLooper(), observer));
+        return new GetStoryTask(authToken, user, limit, lastStatus, new GetStoryHandler( Looper.getMainLooper(), observer));
     }
 
 
@@ -54,7 +54,7 @@ public class StoryService {
     private class GetStoryHandler extends Handler {
         private final StoryObserver observer;
 
-        public GetStoryHandler(StoryService storyService, Looper looper, StoryObserver observer)
+        public GetStoryHandler( Looper looper, StoryObserver observer)
         {
             super(looper);
             this.observer = observer;
@@ -63,16 +63,16 @@ public class StoryService {
         @Override
         public void handleMessage(@NonNull Message msg) {
             Bundle bundle = msg.getData();
-            boolean success = msg.getData().getBoolean(GetStoryTask.SUCCESS_KEY);
+            boolean success = bundle.getBoolean(GetStoryTask.SUCCESS_KEY);
             if (success) {
                 List<Status> statuses = (List<Status>) msg.getData().getSerializable(GetStoryTask.STATUSES_KEY);
-                boolean hasMorePages = msg.getData().getBoolean(GetStoryTask.MORE_PAGES_KEY);
+                boolean hasMorePages = bundle.getBoolean(GetStoryTask.MORE_PAGES_KEY);
                 Status lastStatus = (statuses.size() > 0) ? statuses.get(statuses.size() - 1) : null;
                 observer.handleSuccess(statuses, hasMorePages, lastStatus);
-            } else if (msg.getData().containsKey(GetStoryTask.MESSAGE_KEY)) {
+            } else if (bundle.containsKey(GetStoryTask.MESSAGE_KEY)) {
                 String message = "Failed to get story: " + msg.getData().getString(GetStoryTask.MESSAGE_KEY);
                 observer.handleFailure(message);
-            } else if (msg.getData().containsKey(GetStoryTask.EXCEPTION_KEY)) {
+            } else if (bundle.containsKey(GetStoryTask.EXCEPTION_KEY)) {
                 Exception ex = (Exception) msg.getData().getSerializable(GetStoryTask.EXCEPTION_KEY);
                 observer.handleException(ex);
             }
@@ -110,8 +110,8 @@ public class StoryService {
 
 
         public GetStoryTask(AuthToken authToken, User targetUser, int limit, Status lastStatus,
-                            Handler messageHandler) {
-            super(messageHandler);
+                            GetStoryHandler getStoryHandler) {
+            super(getStoryHandler);
             this.authToken = authToken;
             this.targetUser = targetUser;
             this.limit = limit;
@@ -144,6 +144,10 @@ public class StoryService {
 
         private Pair<List<Status>, Boolean> getStory() {
             Pair<List<Status>, Boolean> pageOfStatus = getFakeData().getPageOfStatus(lastStatus, limit);
+            for(int i = 0; i < pageOfStatus.getFirst().size(); i++)
+            {
+                System.out.println("The status is posted by " + pageOfStatus.getFirst().get(i).getUser().getName());
+            }
             return pageOfStatus;
         }
 

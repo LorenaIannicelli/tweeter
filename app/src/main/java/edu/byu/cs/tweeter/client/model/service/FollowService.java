@@ -18,17 +18,19 @@ import edu.byu.cs.tweeter.util.Pair;
 
 public class FollowService {
 
-    private final Observer observer;
+    private final GetFollowersObserver observer;
 
-    public interface Observer
+    public interface GetFollowersObserver
     {
         void handleSuccess(List<User> followees, boolean hasMorePages);
         void handleFailure(String message);
         void handleException(Exception exception);
     }
 
+    public interface 
+
     //create an instance
-    public FollowService(Observer observer)
+    public FollowService(GetFollowersObserver observer)
     {
         if(observer == null)
             throw new NullPointerException();
@@ -64,9 +66,9 @@ public class FollowService {
 
     public static class FollowingMessageHandler extends Handler {
 
-        private final Observer observer;
+        private final GetFollowersObserver observer;
 
-        public FollowingMessageHandler(Looper looper, Observer observer) {
+        public FollowingMessageHandler(Looper looper, GetFollowersObserver observer) {
             super(looper);
             this.observer = observer;
         }
@@ -91,9 +93,9 @@ public class FollowService {
 
     public static class FollowersMessageHandler extends Handler {
 
-        private final Observer observer;
+        private final GetFollowersObserver observer;
 
-        public FollowersMessageHandler(Looper looper, Observer observer) {
+        public FollowersMessageHandler(Looper looper, GetFollowersObserver observer) {
             super(looper);
             this.observer = observer;
         }

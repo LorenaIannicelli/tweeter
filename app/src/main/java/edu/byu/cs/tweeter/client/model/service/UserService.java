@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -12,6 +13,7 @@ import java.io.Serializable;
 
 import edu.byu.cs.tweeter.client.cache.Cache;
 import edu.byu.cs.tweeter.client.model.service.backgroundTask.BackgroundTaskUtils;
+import edu.byu.cs.tweeter.client.view.main.MainActivity;
 import edu.byu.cs.tweeter.model.domain.AuthToken;
 import edu.byu.cs.tweeter.model.domain.User;
 import edu.byu.cs.tweeter.util.FakeData;
@@ -23,6 +25,12 @@ public class UserService {
         void loginSucceeded(User user, AuthToken authToken);
         void loginFailed(String message);
         void loginThrewException(Exception ex);
+    }
+
+    public interface LogoutObserver {
+        void logoutSucceeded();
+        void logoutFailed(String message);
+        void logoutThrewException(Exception ex);
     }
 
     public interface GetUserObserver {
@@ -64,6 +72,17 @@ public class UserService {
     public UserService.RegisterTask getRegisterTask(String firstName, String lastName, String alias, String password, String image, RegisterObserver observer)
     {
         return new UserService.RegisterTask(firstName, lastName, alias, password, image, new RegisterHandler(Looper.getMainLooper(), observer));
+    }
+
+    public void logout(AuthToken authToken, LogoutObserver observer)
+    {
+        UserService.LogoutTask logoutTask = getLogoutTask(authToken, observer);
+        BackgroundTaskUtils.runTask(logoutTask);
+    }
+
+    public UserService.LogoutTask getLogoutTask(AuthToken authToken, LogoutObserver observer)
+    {
+        return new UserService.LogoutTask(authToken, new LogoutHandler(Looper.getMainLooper(), observer));
     }
 
 
@@ -412,7 +431,31 @@ public class UserService {
         }
     }
 
+    // LogoutHandler
 
+    private class LogoutHandler extends Handler {
+        private final LogoutObserver observer;
+
+        public LogoutHandler(Looper looper, LogoutObserver observer)
+        {
+            super(looper);
+            this.observer = observer;
+        }
+
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            boolean success = msg.getData().getBoolean(LogoutTask.SUCCESS_KEY);
+            if (success) {
+                observer.logoutSucceeded();
+            } else if (msg.getData().containsKey(LogoutTask.MESSAGE_KEY)) {
+                String message = msg.getData().getString(LogoutTask.MESSAGE_KEY);
+                observer.logoutFailed(message);
+            } else if (msg.getData().containsKey(LogoutTask.EXCEPTION_KEY)) {
+                Exception ex = (Exception) msg.getData().getSerializable(LogoutTask.EXCEPTION_KEY);
+                observer.logoutThrewException(ex);
+            }
+        }
+    }
 
 
 }
